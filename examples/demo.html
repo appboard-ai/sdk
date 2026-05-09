@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Appboard SDK demo</title>
+    <style>
+      :root {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color-scheme: light;
+      }
+      body {
+        max-width: 720px;
+        margin: 40px auto;
+        padding: 0 16px;
+        color: #111827;
+      }
+      h1 { margin: 0 0 4px; }
+      p.lede { color: #6b7280; margin-top: 0; }
+      fieldset {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin: 0 0 16px;
+      }
+      legend { font-weight: 600; padding: 0 6px; color: #374151; }
+      label { display: block; font-size: 13px; color: #374151; margin: 8px 0 4px; }
+      input[type="text"] {
+        width: 100%; box-sizing: border-box;
+        padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px;
+        font: inherit;
+      }
+      button {
+        margin: 4px 6px 0 0; padding: 8px 14px;
+        background: #111827; color: #fff; border: none; border-radius: 8px;
+        font: inherit; cursor: pointer;
+      }
+      button:hover { background: #1f2937; }
+      button.secondary { background: #fff; color: #111827; border: 1px solid #d1d5db; }
+      pre {
+        background: #0b1020; color: #e5e7eb; padding: 12px 14px;
+        border-radius: 8px; max-height: 320px; overflow: auto;
+        font-size: 12px; line-height: 1.5;
+      }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+      .row > * { flex: 1 1 200px; }
+      .pill {
+        display: inline-block; font-size: 11px; padding: 2px 8px;
+        border-radius: 999px; background: #f3f4f6; color: #374151;
+        margin-left: 8px; vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Appboard SDK demo <span class="pill" id="status">idle</span></h1>
+    <p class="lede">A minimal page to fire <code>identify</code> and <code>track</code> against a running Appboard api.</p>
+
+    <fieldset>
+      <legend>1. Configure</legend>
+      <div class="row">
+        <div>
+          <label for="apiUrl">API URL</label>
+          <input id="apiUrl" type="text" value="http://localhost:3000" />
+        </div>
+        <div>
+          <label for="projectKey">Project key (pk_…)</label>
+          <input id="projectKey" type="text" placeholder="pk_xxxxxxxxxxxx" />
+        </div>
+      </div>
+      <button id="btnInit">Init</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>2. Identify</legend>
+      <div class="row">
+        <div>
+          <label for="userId">User ID</label>
+          <input id="userId" type="text" value="demo-user-1" />
+        </div>
+      </div>
+      <button id="btnIdentify">identify</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>3. Track events</legend>
+      <button class="secondary" data-event="page.view">page.view</button>
+      <button class="secondary" data-event="chart.created">chart.created</button>
+      <button class="secondary" data-event="invite.sent">invite.sent</button>
+      <button class="secondary" data-event="settings.opened">settings.opened</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Console</legend>
+      <pre id="log"></pre>
+    </fieldset>
+
+    <script src="./appboard.iife.js"></script>
+    <script>
+      const Appboard = window.AppboardSDK.Appboard;
+      const $ = (id) => document.getElementById(id);
+      const log = (msg, data) => {
+        const stamp = new Date().toISOString().split("T")[1].replace("Z", "");
+        const line = `[${stamp}] ${msg}` + (data ? " " + JSON.stringify(data) : "");
+        $("log").textContent = line + "\n" + $("log").textContent;
+      };
+      const setStatus = (s) => { $("status").textContent = s; };
+
+      // Persist project key + user ID across reloads so iterating is painless.
+      const saved = JSON.parse(localStorage.getItem("appboard-demo") || "{}");
+      if (saved.projectKey) $("projectKey").value = saved.projectKey;
+      if (saved.userId) $("userId").value = saved.userId;
+      if (saved.apiUrl) $("apiUrl").value = saved.apiUrl;
+
+      const persist = () => localStorage.setItem("appboard-demo", JSON.stringify({
+        projectKey: $("projectKey").value,
+        userId: $("userId").value,
+        apiUrl: $("apiUrl").value,
+      }));
+
+      $("btnInit").addEventListener("click", () => {
+        const projectKey = $("projectKey").value.trim();
+        const apiUrl = $("apiUrl").value.trim();
+        if (!projectKey) { log("missing project key"); return; }
+        Appboard.init({ projectKey, apiUrl });
+        persist();
+        setStatus("ready");
+        log("init", { apiUrl });
+      });
+
+      $("btnIdentify").addEventListener("click", async () => {
+        const userId = $("userId").value.trim();
+        if (!userId) { log("missing user id"); return; }
+        persist();
+        try {
+          await Appboard.identify(userId, { source: "demo-page" });
+          log("identify ok", { userId });
+        } catch (e) {
+          log("identify failed", { error: String(e) });
+        }
+      });
+
+      document.querySelectorAll("button[data-event]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const event = btn.dataset.event;
+          try {
+            await Appboard.track(event, { ts: Date.now() });
+            log("track ok", { event });
+          } catch (e) {
+            log("track failed", { event, error: String(e) });
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

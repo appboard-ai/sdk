@@ -1,0 +1,42 @@
+{
+  "name": "@appboard-ai/sdk",
+  "version": "0.0.1",
+  "description": "Official Appboard SDK for embeddable onboarding boards",
+  "type": "module",
+  "main": "./dist/appboard.mjs",
+  "module": "./dist/appboard.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/appboard.mjs"
+    },
+    "./browser": "./dist/appboard.iife.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && bun build src/index.ts --outfile dist/appboard.mjs --format esm --target browser && bun build src/iife.ts --outfile dist/appboard.iife.js --format iife --target browser && tsc --emitDeclarationOnly --outDir dist",
+    "typecheck": "tsc --noEmit",
+    "demo:build": "bun build src/iife.ts --outfile examples/appboard.iife.js --format iife --target browser",
+    "demo:serve": "bun --bun -e 'import { serve } from \"bun\"; serve({ port: 8080, fetch: (req) => { const path = new URL(req.url).pathname === \"/\" ? \"/demo.html\" : new URL(req.url).pathname; return new Response(Bun.file(`examples${path}`)); } }); console.log(\"http://localhost:8080\")'",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "onboarding",
+    "app",
+    "customer",
+    "activation"
+  ],
+  "author": "Appboard-AI",
+  "license": "ISC",
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "husky": "^9.1.7",
+    "typescript": "^5.6.3"
+  }
+}
