@@ -39,10 +39,35 @@ await Appboard.track("chart.created", { source: "templates" });
 Appboard.init({ projectKey: string, apiUrl?: string });
 Appboard.identify(userId: string, traits?: Record<string, JsonValue>);
 Appboard.track(eventName: string, props?: Record<string, JsonValue>);
-Appboard.renderBoard(selector: string); // placeholder; embeddable board UI lands later
+Appboard.renderBoard(selector: string);
 ```
 
 `apiUrl` defaults to `https://api.appboard.ai`. Override only for local development.
+
+### `renderBoard(selector)`
+
+Renders the activation checklist into the host element. Uses a Shadow DOM so the host page's styles can't leak into the widget and the widget's styles can't leak into the host.
+
+```html
+<div id="appboard-board"></div>
+<script>
+  Appboard.renderBoard("#appboard-board");
+</script>
+```
+
+**Theming.** Override CSS custom properties on the host element from your own stylesheet:
+
+```css
+#appboard-board {
+  --appboard-primary: #ff5722;
+  --appboard-radius: 6px;
+  --appboard-font: "Inter", sans-serif;
+}
+```
+
+Available custom properties: `--appboard-primary`, `--appboard-primary-foreground`, `--appboard-foreground`, `--appboard-muted`, `--appboard-border`, `--appboard-bg`, `--appboard-bg-soft`, `--appboard-radius`, `--appboard-font`.
+
+Currently renders mock board data; will fetch the current end-user's progress from `/v1/boards` once that api endpoint exists.
 
 ## Local development
 

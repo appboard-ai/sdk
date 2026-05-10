@@ -90,6 +90,16 @@
     </fieldset>
 
     <fieldset>
+      <legend>4. Render board</legend>
+      <p style="color:#6b7280;font-size:13px;margin:0 0 8px;">
+        Renders the activation checklist into the container below via Shadow DOM.
+        Currently uses mock data (real api hookup pending).
+      </p>
+      <button id="btnRender">renderBoard</button>
+      <div id="appboard-board" style="margin-top:14px;max-width:420px;"></div>
+    </fieldset>
+
+    <fieldset>
       <legend>Console</legend>
       <pre id="log"></pre>
     </fieldset>
@@ -149,6 +159,11 @@
             log("track failed", { event, error: String(e) });
           }
         });
+      });
+
+      $("btnRender").addEventListener("click", () => {
+        Appboard.renderBoard("#appboard-board");
+        log("renderBoard ok");
       });
     </script>
   </body>
