@@ -18,8 +18,7 @@ type Traits = Readonly<Record<string, JsonValue>>;
 type Props = Readonly<Record<string, JsonValue>>;
 
 // Board model — mirrors GoalProgressDto / StepProgressDto on the api side.
-// Once GET /v1/boards exists, we'll fetch this directly; for now renderBoard
-// uses a mock so the rendering primitive can be validated independently.
+// Fetched from GET /v1/boards?user_id=...
 type StepProgress = {
   readonly id: string;
   readonly name: string;
@@ -35,38 +34,6 @@ type GoalProgress = {
   readonly steps: readonly StepProgress[];
 };
 type Board = { readonly goals: readonly GoalProgress[] };
-
-const MOCK_BOARD: Board = {
-  goals: [
-    {
-      id: "g_demo",
-      name: "Activated user",
-      description: "Get to first value in your app",
-      total_steps: 3,
-      completed_steps: 1,
-      steps: [
-        {
-          id: "s1",
-          name: "Create your account",
-          event_name: "account_created",
-          completed_at: new Date().toISOString(),
-        },
-        {
-          id: "s2",
-          name: "Invite a teammate",
-          event_name: "invited_teammate",
-          completed_at: null,
-        },
-        {
-          id: "s3",
-          name: "Create your first project",
-          event_name: "created_first_project",
-          completed_at: null,
-        },
-      ],
-    },
-  ],
-};
 
 // Board styles — scoped inside Shadow DOM, so class names are local. Theming
 // surface is :host CSS custom properties; customers override them by setting
@@ -251,9 +218,10 @@ export const Appboard = {
   // so customer styles can't leak into ours and ours can't leak into theirs.
   // Theming: customer overrides --appboard-* CSS custom properties on the host.
   //
-  // Currently mock data — wires to GET /v1/boards?user_id=... once that
-  // endpoint exists on the api side.
-  renderBoard(selector: string): void {
+  // Requires init() and identify() to have been called first. Fetches the
+  // current user's progress from GET /v1/boards. Always renders something
+  // (empty state on any failure) — never throws.
+  async renderBoard(selector: string): Promise<void> {
     const el = document.querySelector(selector);
     if (!el) {
       console.warn(`[Appboard] container not found: ${selector}`);
@@ -266,7 +234,35 @@ export const Appboard = {
     // attachShadow throws if already attached; reuse the existing root so
     // re-renders don't blow up and the host can be re-rendered idempotently.
     const root = el.shadowRoot ?? el.attachShadow({ mode: "open" });
-    renderBoardInto(root, MOCK_BOARD);
+
+    if (!config) {
+      console.warn("[Appboard] init() must be called before renderBoard()");
+      renderBoardInto(root, { goals: [] });
+      return;
+    }
+    if (!currentUserId) {
+      console.warn("[Appboard] identify() must be called before renderBoard()");
+      renderBoardInto(root, { goals: [] });
+      return;
+    }
+
+    try {
+      const url = `${config.apiUrl}/v1/boards?user_id=${encodeURIComponent(currentUserId)}`;
+      const res = await fetch(url, {
+        headers: { authorization: `Bearer ${config.projectKey}` },
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.warn(`[Appboard] /v1/boards → ${res.status}`, text);
+        renderBoardInto(root, { goals: [] });
+        return;
+      }
+      const board = (await res.json()) as Board;
+      renderBoardInto(root, board);
+    } catch (err) {
+      console.warn("[Appboard] /v1/boards fetch failed", err);
+      renderBoardInto(root, { goals: [] });
+    }
   },
 };
 

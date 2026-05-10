@@ -46,14 +46,20 @@ Appboard.renderBoard(selector: string);
 
 ### `renderBoard(selector)`
 
-Renders the activation checklist into the host element. Uses a Shadow DOM so the host page's styles can't leak into the widget and the widget's styles can't leak into the host.
+Async. Fetches the current end-user's goals + step completions from `GET /v1/boards` and renders an activation checklist into the host element. Uses a Shadow DOM so the host page's styles can't leak into the widget and vice versa.
+
+Requires `init()` and `identify()` to have been called first. Always renders something (empty state on any failure) — never throws.
 
 ```html
 <div id="appboard-board"></div>
 <script>
-  Appboard.renderBoard("#appboard-board");
+  Appboard.init({ projectKey: "pk_..." });
+  await Appboard.identify("user_123");
+  await Appboard.renderBoard("#appboard-board");
 </script>
 ```
+
+Calling `renderBoard()` again on the same element re-renders into the existing Shadow DOM — safe to call after fresh `track()` calls to refresh progress.
 
 **Theming.** Override CSS custom properties on the host element from your own stylesheet:
 
@@ -66,8 +72,6 @@ Renders the activation checklist into the host element. Uses a Shadow DOM so the
 ```
 
 Available custom properties: `--appboard-primary`, `--appboard-primary-foreground`, `--appboard-foreground`, `--appboard-muted`, `--appboard-border`, `--appboard-bg`, `--appboard-bg-soft`, `--appboard-radius`, `--appboard-font`.
-
-Currently renders mock board data; will fetch the current end-user's progress from `/v1/boards` once that api endpoint exists.
 
 ## Local development
 
