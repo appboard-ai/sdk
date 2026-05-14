@@ -1,11 +1,15 @@
 // IIFE entry — exposes Appboard on window for <script src> usage.
 // The ESM build (./index.ts) is what npm consumers import.
-import { Appboard } from "./index";
+import { createAppboard } from "./core";
+import { renderBoard } from "./board";
 
 declare global {
   interface Window {
-    AppboardSDK: { Appboard: typeof Appboard };
+    Appboard: {
+      createAppboard: typeof createAppboard;
+      renderBoard: typeof renderBoard;
+    };
   }
 }
 
-window.AppboardSDK = { Appboard };
+window.Appboard = { createAppboard, renderBoard };

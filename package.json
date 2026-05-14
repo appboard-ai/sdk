@@ -1,15 +1,19 @@
 {
   "name": "@appboard-ai/sdk",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Official Appboard SDK for embeddable onboarding boards",
   "type": "module",
-  "main": "./dist/appboard.mjs",
-  "module": "./dist/appboard.mjs",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/appboard.mjs"
+      "import": "./dist/index.mjs"
+    },
+    "./board": {
+      "types": "./dist/board.d.ts",
+      "import": "./dist/board.mjs"
     },
     "./browser": "./dist/appboard.iife.js"
   },
@@ -18,7 +22,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "rm -rf dist && bun build src/index.ts --outfile dist/appboard.mjs --format esm --target browser && bun build src/iife.ts --outfile dist/appboard.iife.js --format iife --target browser && tsc --emitDeclarationOnly --outDir dist",
+    "build": "rm -rf dist && bun build src/index.ts --outfile dist/index.mjs --format esm --target browser && bun build src/board.ts --outfile dist/board.mjs --format esm --target browser && bun build src/iife.ts --outfile dist/appboard.iife.js --format iife --target browser && tsc --emitDeclarationOnly --outDir dist",
     "typecheck": "tsc --noEmit",
     "demo:build": "bun build src/iife.ts --outfile examples/appboard.iife.js --format iife --target browser",
     "demo:serve": "bun --bun -e 'import { serve } from \"bun\"; serve({ port: 8080, fetch: (req) => { const path = new URL(req.url).pathname === \"/\" ? \"/demo.html\" : new URL(req.url).pathname; return new Response(Bun.file(`examples${path}`)); } }); console.log(\"http://localhost:8080\")'",

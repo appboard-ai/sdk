@@ -13,53 +13,79 @@ npm install @appboard-ai/sdk
 ## Usage (npm / bundler)
 
 ```ts
-import { Appboard } from "@appboard-ai/sdk";
+import { createAppboard } from "@appboard-ai/sdk";
 
-Appboard.init({ projectKey: "pk_..." });
+const appboard = createAppboard({ projectKey: "pk_..." });
 
-await Appboard.identify("user_123", { plan: "pro" });
-await Appboard.track("chart.created", { source: "templates" });
+await appboard.identify("user_123", { plan: "pro" });
+await appboard.track("chart.created", { source: "templates" });
 ```
+
+Each `createAppboard(...)` call returns an independent instance — you can run multiple in the same page (e.g. multi-tenant hosts) without state collision.
 
 ## Usage (script tag)
 
 ```html
 <script src="https://unpkg.com/@appboard-ai/sdk/dist/appboard.iife.js"></script>
 <script>
-  const { Appboard } = window.AppboardSDK;
-  Appboard.init({ projectKey: "pk_..." });
-  Appboard.identify("user_123");
-  Appboard.track("chart.created");
+  const appboard = window.Appboard.createAppboard({ projectKey: "pk_..." });
+  await appboard.identify("user_123");
+  await appboard.track("chart.created");
 </script>
 ```
 
 ## API
 
 ```text
-Appboard.init({ projectKey: string, apiUrl?: string });
-Appboard.identify(userId: string, traits?: Record<string, JsonValue>);
-Appboard.track(eventName: string, props?: Record<string, JsonValue>);
-Appboard.renderBoard(selector: string);
+createAppboard({ projectKey: string, apiUrl?: string }): AppboardClient
+
+AppboardClient.identify(userId: string, traits?: Record<string, JsonValue>): Promise<void>
+AppboardClient.track(eventName: string, props?: Record<string, JsonValue>): Promise<void>
+AppboardClient.getBoard(): Promise<Board>
 ```
 
 `apiUrl` defaults to `https://api.appboard.ai`. Override only for local development.
 
-### `renderBoard(selector)`
+**Failure modes.**
 
-Async. Fetches the current end-user's goals + step completions from `GET /v1/boards` and renders an activation checklist into the host element. Uses a Shadow DOM so the host page's styles can't leak into the widget and vice versa.
+- `track()` called before `identify()` warns to the console and drops the event — never throws.
+- `getBoard()` throws on network errors or if `identify()` hasn't been called. Callers wrap in `try/catch`.
+- The optional `renderBoard()` helper (see below) catches both and always renders something.
 
-Requires `init()` and `identify()` to have been called first. Always renders something (empty state on any failure) — never throws.
+### Board UI (optional)
+
+The board renderer is shipped as a separate subpath so tracking-only integrations don't pay for the UI code.
+
+```ts
+import { createAppboard } from "@appboard-ai/sdk";
+import { renderBoard } from "@appboard-ai/sdk/board";
+
+const appboard = createAppboard({ projectKey: "pk_..." });
+await appboard.identify("user_123");
+await renderBoard(appboard, "#appboard-board");
+```
+
+Or via script tag:
 
 ```html
 <div id="appboard-board"></div>
+<script src="https://unpkg.com/@appboard-ai/sdk/dist/appboard.iife.js"></script>
 <script>
-  Appboard.init({ projectKey: "pk_..." });
-  await Appboard.identify("user_123");
-  await Appboard.renderBoard("#appboard-board");
+  const { createAppboard, renderBoard } = window.Appboard;
+  const appboard = createAppboard({ projectKey: "pk_..." });
+  await appboard.identify("user_123");
+  await renderBoard(appboard, "#appboard-board");
 </script>
 ```
 
-Calling `renderBoard()` again on the same element re-renders into the existing Shadow DOM — safe to call after fresh `track()` calls to refresh progress.
+`renderBoard` is async. It fetches the current end-user's goals + step completions via `appboard.getBoard()` and renders an activation checklist into the host element. Uses a Shadow DOM so the host page's styles can't leak into the widget and vice versa. Always renders something (empty state on any failure) — never throws. Calling again on the same element re-renders into the existing Shadow DOM — safe to call after fresh `track()` calls to refresh progress.
+
+**Headless mode.** Skip `renderBoard` entirely and render your own UI on top of the raw data:
+
+```ts
+const board = await appboard.getBoard();
+// board.goals[].steps[].completed_at — render however you want
+```
 
 **Theming.** Override CSS custom properties on the host element from your own stylesheet:
 
@@ -79,13 +105,13 @@ Requires [Bun](https://bun.sh). The SDK uses `bun build` — no rollup/tsup/vite
 
 ```bash
 bun install
-bun run build         # → dist/appboard.mjs (ESM) + dist/appboard.iife.js (browser global)
+bun run build         # → dist/index.mjs (core) + dist/board.mjs (UI) + dist/appboard.iife.js (browser global)
 bun run typecheck
 ```
 
 ### Demo page
 
-The `examples/` folder has a tiny HTML page that calls `init` / `identify` / `track` against a running Appboard api so you can verify ingestion end-to-end.
+The `examples/` folder has a tiny HTML page that calls `identify` / `track` / `renderBoard` against a running Appboard api so you can verify ingestion end-to-end.
 
 ```bash
 # 1. In the appboard repo: start the api on :3000
